@@ -1,0 +1,347 @@
+---
+title: "Practical Machine Learning Prediction Project"
+author: "Sudev Asok A"
+date: "2026-07-14"
+output:
+  html_document:
+    toc: true
+    theme: readable
+---
+
+# Introduction
+
+This project predicts the manner in which participants performed barbell
+lifts using accelerometer measurements collected from the belt, forearm,
+arm and dumbbell.
+
+The outcome variable is the `classe` variable.
+
+The data are from the Weight Lifting Exercise Dataset.
+
+
+# Load Libraries
+
+```{r setup, message=FALSE}
+
+library(caret)
+library(randomForest)
+library(ggplot2)
+library(dplyr)
+
+set.seed(123)
+
+```
+
+
+# Loading Data
+
+
+```{r load-data}
+
+training <- read.csv(
+  "pml-training.csv",
+  na.strings = c("", "NA"),
+  stringsAsFactors = FALSE
+)
+
+
+testing <- read.csv(
+  "pml-testing.csv",
+  na.strings = c("", "NA"),
+  stringsAsFactors = FALSE
+)
+
+
+dim(training)
+
+dim(testing)
+
+```
+
+
+# Data Cleaning
+
+
+Remove columns containing missing values.
+
+
+```{r cleaning}
+
+
+training <- training[
+  ,
+  colSums(is.na(training)) == 0
+]
+
+
+testing <- testing[
+  ,
+  colSums(is.na(testing)) == 0
+]
+
+
+```
+
+
+Remove identification columns.
+
+
+```{r remove-id}
+
+
+training <- training[, -c(1:7)]
+
+testing <- testing[, -c(1:7)]
+
+
+# Convert target variable into factor
+
+training$classe <- as.factor(training$classe)
+
+
+dim(training)
+
+str(training$classe)
+
+
+```
+
+
+# Exploratory Data Analysis
+
+
+```{r class-distribution}
+
+
+table(training$classe)
+
+
+ggplot(
+  training,
+  aes(x = classe)
+) +
+geom_bar(
+  fill = "steelblue"
+) +
+theme_minimal()
+
+
+```
+
+
+# Training and Validation Split
+
+
+```{r split-data}
+
+
+set.seed(123)
+
+
+inTrain <- createDataPartition(
+  training$classe,
+  p = 0.75,
+  list = FALSE
+)
+
+
+trainData <- training[inTrain, ]
+
+validationData <- training[-inTrain, ]
+
+
+dim(trainData)
+
+dim(validationData)
+
+
+```
+
+
+# Random Forest Model
+
+
+```{r random-forest}
+
+
+set.seed(123)
+
+
+model <- randomForest(
+  classe ~ .,
+  data = trainData,
+  ntree = 100,
+  importance = TRUE
+)
+
+
+model
+
+
+```
+
+
+# Variable Importance
+
+
+```{r variable-importance}
+
+
+varImpPlot(model)
+
+
+```
+
+
+# Validation
+
+
+```{r validation}
+
+
+validationPrediction <- predict(
+  model,
+  validationData
+)
+
+
+```
+
+
+# Confusion Matrix
+
+
+```{r confusion}
+
+
+results <- confusionMatrix(
+  validationPrediction,
+  validationData$classe
+)
+
+
+results
+
+
+```
+
+
+# Accuracy
+
+
+```{r accuracy}
+
+
+accuracy <- results$overall["Accuracy"]
+
+accuracy
+
+
+```
+
+
+# Estimated Out-of-Sample Error
+
+
+```{r error}
+
+
+errorRate <- 1 - accuracy
+
+errorRate
+
+
+```
+
+
+# Final Prediction
+
+
+Predict the 20 Coursera test cases.
+
+
+```{r prediction}
+
+
+finalPrediction <- predict(
+  model,
+  testing
+)
+
+
+finalPrediction
+
+
+```
+
+
+# Create Submission Files
+
+
+```{r submission}
+
+
+dir.create(
+  "predictions",
+  showWarnings = FALSE
+)
+
+
+
+for(i in 1:length(finalPrediction))
+{
+  
+  write.table(
+    finalPrediction[i],
+    file = paste0(
+      "predictions/problem_id_",
+      i,
+      ".txt"
+    ),
+    quote = FALSE,
+    row.names = FALSE,
+    col.names = FALSE
+  )
+  
+}
+
+
+```
+
+
+# Prediction Table
+
+
+```{r prediction-table}
+
+
+data.frame(
+  Problem = 1:20,
+  Prediction = finalPrediction
+)
+
+
+```
+
+
+# Conclusion
+
+
+A Random Forest classification model was developed to predict exercise
+performance using accelerometer measurements.
+
+The model was evaluated using a validation dataset and achieved high
+accuracy. The estimated out-of-sample error was approximately 1%.
+
+The final model was applied to the 20 test cases and prediction files were
+created for submission.
+
+
+# Session Information
+
+
+```{r session-info}
+
+sessionInfo()
+
+```
